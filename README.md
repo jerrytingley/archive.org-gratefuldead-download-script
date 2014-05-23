@@ -7,7 +7,7 @@ The script will download the files to a tempoary directory and then rename the f
 
 Usage:
 ======
-python archivemusicdownload.py <archive show id>
+python archivemusicdownload.py archive show id
   
 Example:
 ========
