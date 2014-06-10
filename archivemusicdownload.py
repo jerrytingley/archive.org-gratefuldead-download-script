@@ -5,7 +5,10 @@ import random
 import eyed3
 from urllib import urlretrieve
 from urllib2 import urlopen
-from BeautifulSoup import BeautifulSoup
+try:
+    from BeautifulSoup import BeautifulSoup
+except ImportError:
+    from bs4 import BeautifulSoup  
 
 tmp_dir_string = lambda: 'tmp_'+''.join(random.choice(string.ascii_lowercase+string.digits) for _ in range(6))
 
