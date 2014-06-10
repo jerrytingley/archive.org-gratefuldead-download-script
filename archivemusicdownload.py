@@ -12,6 +12,8 @@ tmp_dir_string = lambda: 'tmp_'+''.join(random.choice(string.ascii_lowercase+str
 def get_m3u_from_url(url):
 	soup = BeautifulSoup(urlopen(url).read())
 	m3u_link = soup.find('p', {'class':'content'}).find('a')['href']
+	if m3u_link.startswith('/download/'):
+		m3u_link = 'https://archive.org'+m3u_link
 	return m3u_link
 
 def rename(tmp_dir_name):
@@ -49,9 +51,12 @@ def download(m3u_link):
 	print "[..] Renaming files..."
 	rename(tmp_dir_name)
 
-def main():
-	url = sys.argv[1]
-	m3u_link = get_m3u_from_url('https://archive.org/details/'+url)
-	print "[..] Downloading "+url
-	download(m3u_link)
+def main():	
+	if len(sys.argv) < 2:
+		print "usage: python archivemusicdownload.py <archive.org ID>"
+	else:
+		url = sys.argv[1]
+		m3u_link = get_m3u_from_url('https://archive.org/details/'+url)
+		print "[..] Downloading "+url
+		download(m3u_link)
 main()
