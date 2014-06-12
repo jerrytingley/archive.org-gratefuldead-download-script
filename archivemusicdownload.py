@@ -1,65 +1,49 @@
 import os
 import sys
-import string
-import random
-import eyed3
+import json
 from urllib import urlretrieve
 from urllib2 import urlopen
-try:
-    from BeautifulSoup import BeautifulSoup
-except ImportError:
-    from bs4 import BeautifulSoup  
 
-tmp_dir_string = lambda: 'tmp_'+''.join(random.choice(string.ascii_lowercase+string.digits) for _ in range(6))
+from pprint import pprint as p
 
-def get_m3u_from_url(url):
-	soup = BeautifulSoup(urlopen(url).read())
-	m3u_link = soup.find('p', {'class':'content'}).find('a')['href']
-	if m3u_link.startswith('/download/'):
-		m3u_link = 'https://archive.org'+m3u_link
-	return m3u_link
+def get_metadata(url):
+	# Parse and reformat metadata
+	metadata = json.loads(urlopen('https://archive.org/metadata/'+url).read())
+	new_metadata = {
+		'download_base' : 'https://'+metadata['server']+metadata['dir']+'/', # py2 % formatting is werid with slashes
+		'local_download_dir' : "%s - %s - %s" % (metadata['metadata']['creator'], metadata['metadata']['date'], metadata['metadata']['venue']),
+		'files' : [],
+	}
+	for file_data in metadata['files']:
+		if file_data['format'] == 'VBR MP3':
+			new_file = {
+				'title' : file_data['title'],
+				'download_filename' : file_data['name'],
+			}
+			try:
+				new_file['local_filename'] = "%s. %s" % (file_data['track'], file_data['title'])
+			except KeyError:
+				new_file['local_filename'] = file_data['title']
+			new_metadata['files'].append(new_file)
+	return new_metadata
 
-def rename(tmp_dir_name):
-	files = os.listdir(tmp_dir_name)
-	info = eyed3.load(tmp_dir_name+'/'+files[0])
-	artist = info.tag.artist
-	album = info.tag.album
-	del info
-	for f in files:
-		old_filename = '%s/%s' % (tmp_dir_name, f)
-		metadata = eyed3.load(old_filename)
-		new_title = metadata.tag.title
-		new_num = metadata.tag.track_num[0]
-		ext = f.split('.')[-1]
-		new_filename = '%s/%i. %s.%s' % (tmp_dir_name, new_num, new_title, ext)
-		print "[..] Renaming %s to %s" % (old_filename, new_filename)
-		os.rename(old_filename, new_filename)
-	new_albumname = '%s - %s' % (artist, album)
-	print "[..] Renaming %s to %s" % (tmp_dir_name, new_albumname)
-	os.rename(tmp_dir_name, new_albumname)
-	
-def download(m3u_link):
-	print "[..] Downloading M3U... "
-	html = urlopen(m3u_link).read()
-	links = html.split('\n')[0:-1]
-	print "[..] Creating temporary directory..."
-	tmp_dir_name = tmp_dir_string()
-	os.mkdir(tmp_dir_name)
+def download(url):
+	print "[..] Retrieving metadata..."
+	metadata = get_metadata(url)
+	print "[..] Creating directory..."
+	os.mkdir(metadata['local_download_dir'])
 	print "[..] Downloading files..."
-	file_count = len(links)
-	for i, link in enumerate(links):
-		filename = tmp_dir_name+"/"+link.split('/')[-1]
-		print "[..] Downloading %s (%i/%i)..." % (filename, i+1, file_count)
-		urlretrieve(link, filename)
-	print "[..] Renaming files..."
-	rename(tmp_dir_name)
+	file_count = len(metadata['files'])
+	for i, file_data in enumerate(metadata['files']):
+		local_filename = "%s/%s" % (metadata['local_download_dir'], file_data['local_filename'])
+		print "[..] Downloading %s (%i/%i)..." % (file_data['local_filename'], i+1, file_count)
+		urlretrieve(metadata['download_base']+file_data['download_filename'], local_filename)
 
-def main():	
+def main():
 	if len(sys.argv) < 2:
 		print "usage: python archivemusicdownload.py <archive.org ID>"
 	else:
 		url = sys.argv[1]
-		m3u_link = get_m3u_from_url('https://archive.org/details/'+url)
 		print "[..] Downloading "+url
-		download(m3u_link)
+		download(url)
 main()
