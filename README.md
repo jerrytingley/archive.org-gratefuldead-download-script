@@ -3,7 +3,8 @@ archive.org-gratefuldead-download-script
 
 Python script to download Grateful Dead shows from archive.org
 
-The script will download the files to a tempoary directory and then rename the files and tempoary directory according to the files metadata.
+The script downloads to a folder in the format of "date of show - venue". If a download is interrupted, it redownloads the
+last downloaded file and continues where it left off.
 
 Usage:
 ======
